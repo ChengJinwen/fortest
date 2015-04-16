@@ -1,0 +1,46 @@
+function  price=getmodelprice(S,K,T,ht1,r,d) 
+    %参数输入
+    lam  =-0.110310645725451;
+    beta = 0.98432329374203; 
+    gam  = 0.079661464740577; 
+    om   =-0.11793575582068;
+    tau1 =-0.0854699265927328;
+    tau2 = 0.017337681097698;
+    sig2 = 0.114733744297335;
+    alpha= 1.68946917805278;
+    nsim = 1000;
+    xitt1 = random('norm',0,1,nsim,T);
+    xitt2 = random('norm',0,1,nsim,T);
+    xt     = ones(nsim,1);
+    xthomo = xt;
+    ht     = ht1*ones(nsim,1);
+    sigma  = sqrt(252*ht1);
+    bsprice=blsprice(S,K,r*365,T/365,sigma,d*365);
+    %蒙特卡洛模拟过程
+    for i = 1:T
+        xit1=xitt1(1:nsim,i);
+        xit2=xitt2(1:nsim,i);
+        xt = xt.*exp(-0.5*ht+sqrt(ht).*xit1);
+        xthomo = xthomo.*exp(-0.5*sigma^2/365+sigma/sqrt(365).*xit1);
+        mxt=mean(xt);
+        mxthomo=mean(xthomo);
+        if mxt < 0.5
+            chgar=-99;
+            break;
+        else
+            xt = xt/mxt*(1+r);
+            xthomo = xthomo/mxthomo*(1+r);
+            ht=exp(om*ones(nsim,1)+beta*log(ht)+tau1*(xit1-lam)+tau2*((xit1-lam).^2-1)+gam*sqrt(sig2)*(xit2+alpha));
+        end;
+    end;
+    xta=S*exp(r*T).*xt;
+    xtahomo=S*exp(r*T).*xthomo;
+    maxpay=xta-K*ones(nsim,1);
+    maxpay=max(maxpay,zeros(nsim,1));
+    maxpayhomo=xtahomo-K*ones(nsim,1);
+    maxpayhomo=max(maxpayhomo,zeros(nsim,1));
+    chgarsumhomo=exp(-r*T)*sum(maxpayhomo);
+    chgarhomo=chgarsumhomo/nsim;
+    chgarsum=exp(-r*T)*sum(maxpay);
+    op_price=chgarsum/nsim + bsprice - chgarhomo;
+    price=op_price;
