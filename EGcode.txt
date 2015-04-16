@@ -1,0 +1,41 @@
+function  price=getmodelprice(S,K,T,ht1,r,d,imp) 
+    %参数输入
+    beta = 0.991148443921081; 
+    lam  = 0.163809287805234; 
+    om   = -0.0763033918509093;
+    tau1 = -0.061353889704049;
+    tau2 = 0.0889437857500819;
+    nsim = 1000;
+    %随机变量模拟
+    xitt=random('norm',0,1,nsim,T);
+    xt = ones(nsim,1);
+    xthomo=xt;
+    ht = ht1*ones(nsim,1);
+    sigma=sqrt(252*ht1);
+    bsprice=blsprice(S,K,r*365,T/365,imp,d*365);
+    for i = 1:T
+    xit=xitt(1:nsim,i);
+    xt = xt.*exp(r-0.5*ht+sqrt(ht).*xit);
+    xthomo = xthomo.*exp(r-0.5*sigma^2/252+sigma/sqrt(252).*xit);
+    mxt=mean(xt);
+    mxthomo=mean(xthomo);
+    if mxt < 0.5
+        chgar=-99;
+        break;
+    else
+        xt = xt/mxt;
+        xthomo = xthomo/mxthomo;
+        ht=exp(om*ones(nsim,1)+beta*log(ht)+tau1*(xit-lam)+tau2*(abs(xit-lam)-sqrt(2/pi)));
+    end;
+    end;
+    xta=S.*xt;
+    xtahomo=S.*xthomo;
+    maxpay=xta-K*ones(nsim,1);
+    maxpay=max(maxpay,zeros(nsim,1));
+    maxpayhomo=xtahomo-K*ones(nsim,1);
+    maxpayhomo=max(maxpayhomo,zeros(nsim,1));
+    chgarsumhomo=exp(-r*T)*sum(maxpayhomo);
+    chgarhomo=chgarsumhomo/nsim;
+    chgarsum=exp(-r*T)*sum(maxpay);
+    op_price=chgarsum/nsim + bsprice - chgarhomo;
+    price=op_price;
